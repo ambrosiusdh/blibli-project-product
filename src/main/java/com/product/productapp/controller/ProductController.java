@@ -1,9 +1,15 @@
 package com.product.productapp.controller;
 
+import com.product.productapp.model.ApiKey;
 import com.product.productapp.model.Product;
 import com.product.productapp.service.ProductServiceImpl;
+import com.product.productapp.validation.ValidationHelper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 
@@ -11,9 +17,12 @@ import java.util.List;
 public class ProductController {
 
     private ProductServiceImpl productService;
+    private ValidationHelper validationHelper;
 
-    public ProductController(ProductServiceImpl productService) {
+    @Autowired
+    public ProductController(ProductServiceImpl productService, ValidationHelper validationHelper) {
         this.productService = productService;
+        this.validationHelper = validationHelper;
     }
 
     @RequestMapping(
@@ -22,9 +31,11 @@ public class ProductController {
             produces = MediaType.APPLICATION_JSON_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
-    public Product createMember(@RequestBody Product product) {
-        productService.createProduct(product);
-        return product;
+    public Mono<Product> createMember(@RequestBody Product product) {
+        return validationHelper.validate(product)
+                .flatMap(data-> productService.createProduct(data))
+                .subscribeOn(Schedulers.elastic());
+
     }
 
     @RequestMapping(
@@ -32,17 +43,17 @@ public class ProductController {
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public Product findById(@PathVariable int productId) {
+    public Mono<Product> findById(@PathVariable int productId) {
         return productService.findById(productId);
     }
 
     @RequestMapping(
-            value = "/product",
+            value = "/database/product/all",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public List<Product> findAll() {
-        return productService.getProducts();
+    public Flux<Product> findAll(ApiKey apiKey) {
+        return productService.findAll();
     }
 
     @RequestMapping(
@@ -51,16 +62,16 @@ public class ProductController {
             produces = MediaType.APPLICATION_JSON_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
-    public Product update(@RequestBody Product product) {
+    public Mono<Product> update(@RequestBody Product product) {
         return productService.update(product);
     }
 
     @RequestMapping(
-            value = "/product/{productId}",
+            value = "/database/product/{productId}",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public Product delete(@PathVariable int productId) {
+    public Mono<Product> delete(@PathVariable int productId) {
         return productService.delete(productId);
     }
 }

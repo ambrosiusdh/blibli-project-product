@@ -1,63 +1,55 @@
 package com.product.productapp.service;
 
 import com.product.productapp.model.Product;
-import org.springframework.beans.BeanUtils;
+import com.product.productapp.repository.ProductRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Component
 public class ProductServiceImpl implements ProductService {
 
-    private List<Product> products = new ArrayList<>();
+    private ProductRepository productRepository;
 
-    public List<Product> getProducts() {
-        return products;
+    @Autowired
+    public ProductServiceImpl(ProductRepository productRepository) {
+        this.productRepository = productRepository;
     }
 
     @Override
-    public Product createProduct(Product product) {
-        products.add(product);
-        return product;
+    public Mono<Product> createProduct(Product product) {
+        return productRepository.save(product);
     }
 
     @Override
-    public Product findById(int id) {
-        for (Product p: products) {
-            if(p.getProductId() == id){
-                return p;
-            }
-        }
-        return null;
+    public Mono<Product> findById(int id) {
+        return productRepository.findById(id);
     }
 
     @Override
-    public List<Product> findAll() {
-        return products;
+    public Flux<Product> findAll() {
+        return productRepository.findAll();
     }
 
     @Override
-    public Product update(Product product) {
-        for (Product p : products) {
-            if(p.getProductId() == product.getProductId()){
-                BeanUtils.copyProperties(product, p);
-                return p;
-            }
-        }
-        return null;
+    public Mono<Product> update(Product product) {
+        return productRepository.save(product);
     }
 
     @Override
-    public Product delete(int id) {
-        Product temp = new Product();
-        for (Product p : products) {
-            if(p.getProductId() == id){
-                BeanUtils.copyProperties(p, temp);
-                products.remove(p);
-                return temp;
-            }
-        }
-        return null;
+    public Mono<Product> delete(int id) {
+        return productRepository.findById(id)
+                .flatMap(product -> productRepository.delete(product)
+                    .thenReturn(product)
+                );
+    }
+
+    public void deleteAll() {
+        productRepository.deleteAll();
+    }
+
+    public Mono<Product> findByProductName(String productName){
+        return productRepository.findByProductName(productName);
     }
 }
